@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP File Scanner</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        .server-status {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .status-indicator {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        .status-online {
+            background: #27ae60;
+            color: white;
+        }
+        .status-offline {
+            background: #e74c3c;
+            color: white;
+        }
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+        }
+        .tool-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .tool-card h2 {
+            margin-top: 0;
+            color: #2980b9;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .tool-card h2 .icon {
+            font-size: 24px;
+        }
+        .endpoint {
+            background: #ecf0f1;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 15px;
+            display: inline-block;
+        }
+        .description {
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        label {
+            font-weight: 500;
+            font-size: 14px;
+            color: #555;
+        }
+        input[type="text"], textarea {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: monospace;
+        }
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .btn-danger {
+            background: #e74c3c;
+        }
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        .btn-success {
+            background: #27ae60;
+        }
+        .btn-success:hover {
+            background: #219a52;
+        }
+        .btn-warning {
+            background: #f39c12;
+        }
+        .btn-warning:hover {
+            background: #d68910;
+        }
+        .response-area {
+            margin-top: 15px;
+            padding: 15px;
+            background: #2c3e50;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 13px;
+            color: #ecf0f1;
+            max-height: 300px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            display: none;
+        }
+        .response-area.visible {
+            display: block;
+        }
+        .response-area.error {
+            background: #c0392b;
+        }
+        .response-area.success {
+            background: #27ae60;
+        }
+        .tree-view {
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .tree-item {
+            padding-left: 20px;
+        }
+        .tree-dir {
+            color: #3498db;
+            font-weight: bold;
+        }
+        .tree-file {
+            color: #2ecc71;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .config-section {
+            background: white;
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .config-section h3 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+        }
+        .config-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .config-row input {
+            flex: 1;
+        }
+        .config-row button {
+            white-space: nowrap;
+        }
+        select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+        select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        .command-help {
+            font-size: 12px;
+            color: #7f8c8d;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .command-help:empty {
+            display: none;
+        }
+        .server-info {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .server-info h2 {
+            margin: 0 0 15px 0;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .server-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .info-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+        }
+        .info-item .label {
+            font-size: 12px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        .info-item .value {
+            font-family: monospace;
+            font-size: 14px;
+            color: #2c3e50;
+            word-break: break-all;
+        }
+        .endpoints-list {
+            border-top: 1px solid #ecf0f1;
+            padding-top: 15px;
+        }
+        .endpoints-list h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+        .endpoint-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .endpoint-item:last-child {
+            border-bottom: none;
+        }
+        .endpoint-method {
+            font-family: monospace;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        .endpoint-method.get {
+            background: #3498db;
+            color: white;
+        }
+        .endpoint-method.post {
+            background: #27ae60;
+            color: white;
+        }
+        .endpoint-path {
+            font-family: monospace;
+            font-size: 13px;
+            color: #2c3e50;
+        }
+        .endpoint-desc {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-left: auto;
+        }
+        .shell-cmd-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .shell-cmd-item:last-child {
+            border-bottom: none;
+        }
+        .shell-cmd-name {
+            font-family: monospace;
+            font-size: 13px;
+            font-weight: bold;
+            color: #8e44ad;
+            min-width: 60px;
+        }
+        .shell-cmd-desc {
+            font-size: 12px;
+            color: #555;
+        }
+        .shell-cmd-example {
+            font-family: monospace;
+            font-size: 11px;
+            color: #7f8c8d;
+            margin-left: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1 id="serverName">MCP File Scanner</h1>
+    <p class="subtitle">Interactive UI for the File Scanner MCP Server</p>
+
+    <div class="config-section">
+        <h3>Server Configuration</h3>
+        <div class="config-row">
+            <input type="text" id="serverUrl" value="http://localhost:8080" placeholder="Server URL">
+            <button onclick="loadServerInfo()">Connect</button>
+        </div>
+        <div class="server-status">
+            <span id="statusIndicator" class="status-indicator status-offline">Checking...</span>
+        </div>
+    </div>
+
+    <div class="server-info" id="serverInfo" style="display: none;">
+        <h2>Server Information</h2>
+        <div class="server-info-grid">
+            <div class="info-item">
+                <div class="label">Version</div>
+                <div class="value" id="serverVersion">-</div>
+            </div>
+            <div class="info-item">
+                <div class="label">Allowed Root</div>
+                <div class="value" id="allowedRoot">-</div>
+            </div>
+            <div class="info-item">
+                <div class="label">Endpoints</div>
+                <div class="value" id="endpointCount">-</div>
+            </div>
+        </div>
+        <div class="endpoints-list">
+            <h3>Available Endpoints</h3>
+            <div id="endpointsList"></div>
+        </div>
+        <div class="endpoints-list">
+            <h3>Available Shell Commands</h3>
+            <div id="shellCommandsList"></div>
+        </div>
+    </div>
+
+    <div class="tools-grid">
+        <!-- List Tool -->
+        <div class="tool-card">
+            <h2><span class="icon">📁</span> List Directory</h2>
+            <span class="endpoint">POST /mcp/tool/file_scanner/list</span>
+            <p class="description">Lists directory contents as a tree structure, showing all files and subdirectories recursively.</p>
+            <form onsubmit="handleList(event)">
+                <label for="listPath">Directory Path</label>
+                <input type="text" id="listPath" name="path" placeholder="/path/to/directory" required>
+                <button type="submit" class="btn-success">List Contents</button>
+            </form>
+            <div id="listResponse" class="response-area"></div>
+        </div>
+
+        <!-- Read Tool -->
+        <div class="tool-card">
+            <h2><span class="icon">📄</span> Read File</h2>
+            <span class="endpoint">POST /mcp/tool/file_scanner/read</span>
+            <p class="description">Reads and returns the contents of a file. Only works with files, not directories.</p>
+            <form onsubmit="handleRead(event)">
+                <label for="readPath">File Path</label>
+                <input type="text" id="readPath" name="path" placeholder="/path/to/file.txt" required>
+                <button type="submit">Read File</button>
+            </form>
+            <div id="readResponse" class="response-area"></div>
+        </div>
+
+        <!-- Write Tool -->
+        <div class="tool-card">
+            <h2><span class="icon">✏️</span> Write File</h2>
+            <span class="endpoint">POST /mcp/tool/file_scanner/write</span>
+            <p class="description">Creates or overwrites a file with the provided content. Automatically creates parent directories if needed.</p>
+            <form onsubmit="handleWrite(event)">
+                <label for="writePath">File Path</label>
+                <input type="text" id="writePath" name="path" placeholder="/path/to/file.txt" required>
+                <label for="writeContent">Content</label>
+                <textarea id="writeContent" name="content" placeholder="Enter file content here..."></textarea>
+                <button type="submit" class="btn-warning">Write File</button>
+            </form>
+            <div id="writeResponse" class="response-area"></div>
+        </div>
+
+        <!-- Delete Tool -->
+        <div class="tool-card">
+            <h2><span class="icon">🗑️</span> Delete</h2>
+            <span class="endpoint">POST /mcp/tool/file_scanner/delete</span>
+            <p class="description">Deletes a file or directory (including all contents). Use with caution!</p>
+            <form onsubmit="handleDelete(event)">
+                <label for="deletePath">Path to Delete</label>
+                <input type="text" id="deletePath" name="path" placeholder="/path/to/file-or-directory" required>
+                <button type="submit" class="btn-danger">Delete</button>
+            </form>
+            <div id="deleteResponse" class="response-area"></div>
+        </div>
+
+        <!-- Shell Commands -->
+        <div class="tool-card">
+            <h2><span class="icon">💻</span> Shell Commands</h2>
+            <span class="endpoint">POST /mcp/tool/shell/exec</span>
+            <p class="description">Execute whitelisted shell commands. Select a command and provide arguments.</p>
+            <form onsubmit="handleShell(event)">
+                <label for="shellCommand">Command</label>
+                <select id="shellCommand" name="command" required>
+                    <option value="">Loading commands...</option>
+                </select>
+                <div id="commandHelp" class="command-help"></div>
+                <label for="shellArgs">Arguments (space-separated)</label>
+                <input type="text" id="shellArgs" name="args" placeholder="e.g., -la /path/to/dir">
+                <button type="submit" class="btn-success">Execute</button>
+            </form>
+            <div id="shellResponse" class="response-area"></div>
+        </div>
+    </div>
+
+    <script>
+        const getServerUrl = () => document.getElementById('serverUrl').value.replace(/\/$/, '');
+
+        async function loadServerInfo() {
+            const indicator = document.getElementById('statusIndicator');
+            const serverInfo = document.getElementById('serverInfo');
+            indicator.textContent = 'Connecting...';
+            indicator.className = 'status-indicator';
+
+            try {
+                const response = await fetch(`${getServerUrl()}/`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Server error');
+                }
+
+                const data = await response.json();
+
+                // Update status
+                indicator.textContent = 'Online';
+                indicator.className = 'status-indicator status-online';
+
+                // Update server info
+                document.getElementById('serverName').textContent = data.name || 'MCP Server';
+                document.getElementById('serverVersion').textContent = data.version || '-';
+                document.getElementById('allowedRoot').textContent = data.allowed_root || '-';
+                document.getElementById('endpointCount').textContent = data.endpoints?.length || 0;
+
+                // Render endpoints list
+                const endpointsList = document.getElementById('endpointsList');
+                endpointsList.innerHTML = '';
+                for (const ep of data.endpoints || []) {
+                    const item = document.createElement('div');
+                    item.className = 'endpoint-item';
+                    item.innerHTML = `
+                        <span class="endpoint-method ${ep.method.toLowerCase()}">${ep.method}</span>
+                        <span class="endpoint-path">${ep.path}</span>
+                        <span class="endpoint-desc">${ep.description}</span>
+                    `;
+                    endpointsList.appendChild(item);
+                }
+
+                // Show server info section
+                serverInfo.style.display = 'block';
+
+                // Load shell commands
+                loadCommands();
+
+            } catch (e) {
+                indicator.textContent = 'Offline';
+                indicator.className = 'status-indicator status-offline';
+                serverInfo.style.display = 'none';
+            }
+        }
+
+        function showResponse(elementId, data, isError = false, isSuccess = false) {
+            const el = document.getElementById(elementId);
+            el.classList.add('visible');
+            el.classList.remove('error', 'success');
+
+            if (isError) el.classList.add('error');
+            if (isSuccess) el.classList.add('success');
+
+            if (typeof data === 'object') {
+                el.textContent = JSON.stringify(data, null, 2);
+            } else {
+                el.textContent = data;
+            }
+        }
+
+        function renderTree(entry, indent = 0) {
+            const prefix = '  '.repeat(indent);
+            let result = '';
+
+            if (entry.is_dir) {
+                result += `${prefix}📁 ${entry.name}/\n`;
+                if (entry.files) {
+                    for (const child of entry.files) {
+                        result += renderTree(child, indent + 1);
+                    }
+                }
+            } else {
+                result += `${prefix}📄 ${entry.name}\n`;
+            }
+
+            return result;
+        }
+
+        async function handleList(event) {
+            event.preventDefault();
+            const path = document.getElementById('listPath').value;
+
+            try {
+                const response = await fetch(`${getServerUrl()}/mcp/tool/file_scanner/list`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showResponse('listResponse', data.error, true);
+                } else if (data.tree) {
+                    const treeText = renderTree(data.tree);
+                    showResponse('listResponse', treeText, false, true);
+                } else {
+                    showResponse('listResponse', data, false, true);
+                }
+            } catch (e) {
+                showResponse('listResponse', `Error: ${e.message}`, true);
+            }
+        }
+
+        async function handleRead(event) {
+            event.preventDefault();
+            const path = document.getElementById('readPath').value;
+
+            try {
+                const response = await fetch(`${getServerUrl()}/mcp/tool/file_scanner/read`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showResponse('readResponse', data.error, true);
+                } else {
+                    showResponse('readResponse', data.content || '(empty file)', false, true);
+                }
+            } catch (e) {
+                showResponse('readResponse', `Error: ${e.message}`, true);
+            }
+        }
+
+        async function handleWrite(event) {
+            event.preventDefault();
+            const path = document.getElementById('writePath').value;
+            const content = document.getElementById('writeContent').value;
+
+            try {
+                const response = await fetch(`${getServerUrl()}/mcp/tool/file_scanner/write`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path, content })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showResponse('writeResponse', data.error, true);
+                } else if (data.success) {
+                    showResponse('writeResponse', `Successfully wrote to: ${path}`, false, true);
+                } else {
+                    showResponse('writeResponse', data);
+                }
+            } catch (e) {
+                showResponse('writeResponse', `Error: ${e.message}`, true);
+            }
+        }
+
+        async function handleDelete(event) {
+            event.preventDefault();
+            const path = document.getElementById('deletePath').value;
+
+            if (!confirm(`Are you sure you want to delete: ${path}?\n\nThis action cannot be undone!`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${getServerUrl()}/mcp/tool/file_scanner/delete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showResponse('deleteResponse', data.error, true);
+                } else if (data.success) {
+                    showResponse('deleteResponse', `Successfully deleted: ${path}`, false, true);
+                } else {
+                    showResponse('deleteResponse', data);
+                }
+            } catch (e) {
+                showResponse('deleteResponse', `Error: ${e.message}`, true);
+            }
+        }
+
+        let availableCommands = [];
+
+        async function loadCommands() {
+            const select = document.getElementById('shellCommand');
+            const cmdList = document.getElementById('shellCommandsList');
+            try {
+                const response = await fetch(`${getServerUrl()}/mcp/tool/shell/list`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+                availableCommands = data.commands || [];
+
+                // Update dropdown
+                select.innerHTML = '<option value="">Select a command...</option>';
+                for (const cmd of availableCommands) {
+                    const option = document.createElement('option');
+                    option.value = cmd.name;
+                    option.textContent = cmd.name;
+                    select.appendChild(option);
+                }
+
+                // Update server info list
+                cmdList.innerHTML = '';
+                for (const cmd of availableCommands) {
+                    const item = document.createElement('div');
+                    item.className = 'shell-cmd-item';
+                    item.innerHTML = `
+                        <span class="shell-cmd-name">${cmd.name}</span>
+                        <span class="shell-cmd-desc">${cmd.description}</span>
+                        <span class="shell-cmd-example">${cmd.example}</span>
+                    `;
+                    cmdList.appendChild(item);
+                }
+            } catch (e) {
+                select.innerHTML = '<option value="">Failed to load commands</option>';
+                cmdList.innerHTML = '<div style="color: #e74c3c;">Failed to load commands</div>';
+            }
+        }
+
+        function updateCommandHelp() {
+            const select = document.getElementById('shellCommand');
+            const help = document.getElementById('commandHelp');
+            const cmd = availableCommands.find(c => c.name === select.value);
+
+            if (cmd) {
+                help.innerHTML = `<strong>${cmd.description}</strong><br>Example: ${cmd.example}`;
+            } else {
+                help.innerHTML = '';
+            }
+        }
+
+        async function handleShell(event) {
+            event.preventDefault();
+            const command = document.getElementById('shellCommand').value;
+            const argsStr = document.getElementById('shellArgs').value.trim();
+
+            // Parse args (simple space-split, respects quotes)
+            const args = argsStr ? argsStr.match(/(?:[^\s"]+|"[^"]*")+/g)?.map(s => s.replace(/^"|"$/g, '')) || [] : [];
+
+            try {
+                const response = await fetch(`${getServerUrl()}/mcp/tool/shell/exec`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command, args })
+                });
+
+                const data = await response.json();
+
+                if (data.error && !data.output) {
+                    showResponse('shellResponse', data.error, true);
+                } else {
+                    showResponse('shellResponse', data.output || '(no output)', false, true);
+                }
+            } catch (e) {
+                showResponse('shellResponse', `Error: ${e.message}`, true);
+            }
+        }
+
+        // Setup event listeners and load initial data
+        window.onload = function() {
+            loadServerInfo();
+            document.getElementById('shellCommand').addEventListener('change', updateCommandHelp);
+        };
+    </script>
+</body>
+</html>
